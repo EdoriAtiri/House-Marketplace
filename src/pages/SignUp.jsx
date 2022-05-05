@@ -1,5 +1,12 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  updateProfile,
+} from 'firebase/auth'
+import { setDoc, doc, serverTimestamp } from 'firebase/firestore'
+import { db } from '../firebase.config'
 import { ReactComponent as ArrowRightIcon } from '../assets/svg/keyboardArrowRightIcon.svg'
 import visibilityIcon from '../assets/svg/visibilityIcon.svg'
 
@@ -22,13 +29,48 @@ function SignUp() {
     }))
   }
 
+  const onSubmit = async (e) => {
+    e.preventDefault()
+
+    try {
+      const auth = getAuth()
+
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      )
+
+      const user = userCredential.user
+
+      updateProfile(auth.currentUser, {
+        displayName: name,
+      })
+
+      //   Save User to Firestore
+      // Creating copy of formdata, so as not to modify our formData state
+      const formDataCopy = { ...formData }
+      //   deleting password because we dont want it in our db
+      delete formDataCopy.password
+      // setting timestamp to the server timestamp
+      formDataCopy.timestamp = serverTimestamp()
+      // setDoc is going to update database and add users to users collection
+      await setDoc(doc(db, 'users', user.uid), formDataCopy)
+
+      //   navigate to address
+      navigate('/')
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
   return (
     <>
       <div className="pageContainer">
         <header>
           <p className="pageHeader">Welcome Back!</p>
         </header>
-        <form action="">
+        <form onSubmit={onSubmit}>
           <input
             type="text"
             className="nameInput"
