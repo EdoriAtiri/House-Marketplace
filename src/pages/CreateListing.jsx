@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { getAuth, onAuthStateChanged } from 'firebase/auth'
 import { useNavigate } from 'react-router-dom'
+import { toast } from 'react-toastify'
 import Spinner from '../components/Spinner'
 
 function CreateListing() {
@@ -59,18 +60,75 @@ function CreateListing() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMounted])
 
-  const onSubmit = (e) => {
+  const onSubmit = async (e) => {
     e.preventDefault()
-    console.log(formData)
+
+    setLoading(true)
+    if (discountedPrice >= regularPrice) {
+      setLoading(false)
+      toast.error('Discounted price needs to be less than regular price')
+      return
+    }
+
+    if (images.length > 6) {
+      setLoading(false)
+      toast.error('Max 6 images')
+      return
+    }
+
+    let geolocation = {}
+    let location
+
+    if (geolocationEnabled) {
+      const response =
+        await fetch(`http://dev.virtualearth.net/REST/v1/Locations?addressLine=${address}&key=${process.env.REACT_APP_GEOCODE_API_KEY}
+`)
+
+      const data = await response.json()
+      // Latitude
+      geolocation.lat =
+        data.resourceSets[0].estimatedTotal === 0
+          ? 0
+          : data.resourceSets[0].resources[0].point.coordinates[0]
+
+      // Longitude
+      geolocation.lng =
+        data.resourceSets[0].estimatedTotal === 0
+          ? 0
+          : data.resourceSets[0].resources[0].point.coordinates[1]
+
+      // Formatted location address
+      location =
+        data.resourceSets[0].estimatedTotal === 0
+          ? undefined
+          : data.resourceSets[0].resources[0].address.formattedAddress
+
+      if (location === undefined || location.includes('undefined')) {
+        setLoading(false)
+        toast.error('Please enter a correct address')
+        return
+      }
+
+      console.log(geolocation.lat, geolocation.lng, location)
+    } else {
+      geolocation.lat = latitude
+      geolocation.lng = longitude
+      location = address
+    }
+    setLoading(false)
   }
 
   const onMutate = (e) => {
+    // Boolean inputs
+    // Sets a variable 'boolean' to null
     let boolean = null
 
+    // sets value of boolean to true if value of target is 'true'
     if (e.target.value === 'true') {
       boolean = true
     }
 
+    // sets value of boolean to false if value of target is 'false'
     if (e.target.value === 'false') {
       boolean = false
     }
